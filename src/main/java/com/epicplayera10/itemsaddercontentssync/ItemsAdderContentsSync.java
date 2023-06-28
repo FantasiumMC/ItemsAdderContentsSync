@@ -1,45 +1,64 @@
 package com.epicplayera10.itemsaddercontentssync;
 
+import co.aikar.commands.PaperCommandManager;
 import com.epicplayera10.itemsaddercontentssync.commands.MainCommand;
 import com.epicplayera10.itemsaddercontentssync.configuration.ConfigurationFactory;
 import com.epicplayera10.itemsaddercontentssync.configuration.PluginConfiguration;
-import com.epicplayera10.itemsaddercontentssync.utils.FileUtils;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import dev.lone.itemsadder.api.ItemsAdder;
+import com.epicplayera10.itemsaddercontentssync.listeners.ItemsAdderListener;
 import org.bukkit.Bukkit;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.eclipse.jgit.api.CloneCommand;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.errors.GitAPIException;
+import org.bukkit.scheduler.BukkitTask;
 import org.eclipse.jgit.transport.CredentialsProvider;
-import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
+import org.jetbrains.annotations.ApiStatus;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.nio.file.Files;
 
 public final class ItemsAdderContentsSync extends JavaPlugin {
 
     private final File pluginConfigurationFile = new File(this.getDataFolder(), "config.yml");
 
-    private final File tempPackDir = new File(this.getDataFolder(), "temprepo");
+    private final File packDir = new File(this.getDataFolder(), "packrepo");
 
     private static ItemsAdderContentsSync instance;
+    private Plugin itemsAdderInstance;
 
     private PluginConfiguration pluginConfiguration;
+
+    private boolean itemsAdderReloading = true;
+
+    private BukkitTask syncTask = null;
 
     @Override
     public void onEnable() {
         instance = this;
+        itemsAdderInstance = Bukkit.getPluginManager().getPlugin("ItemsAdder");
 
         this.pluginConfiguration = ConfigurationFactory.createPluginConfiguration(this.pluginConfigurationFile);
 
-        getCommand("itemsaddercontentssync").setExecutor(new MainCommand());
-        getCommand("iacs").setExecutor(new MainCommand());
+        CredentialsProvider.setDefault(this.pluginConfiguration.credentials);
+
+        Bukkit.getPluginManager().registerEvents(new ItemsAdderListener(), this);
+
+        // Register command
+        PaperCommandManager manager = new PaperCommandManager(this);
+        manager.enableUnstableAPI("help");
+        manager.enableUnstableAPI("brigadier");
+
+        manager.registerCommand(new MainCommand());
+
+        // Start task
+        startSyncTask();
+    }
+
+    private void startSyncTask() {
+        if (this.pluginConfiguration.syncRepeatMinutes != -1) {
+            long ticks = (long) this.pluginConfiguration.syncRepeatMinutes * 60 * 20;
+
+            this.syncTask = Bukkit.getScheduler().runTaskTimer(this, () -> IASyncManager.syncPack(false), ticks, ticks);
+        }
     }
 
     @Override
@@ -48,59 +67,14 @@ public final class ItemsAdderContentsSync extends JavaPlugin {
 
     }
 
-    public void syncPack() {
-        try {
-            FileUtils.deleteRecursion(tempPackDir);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+    public void reload() {
+        this.pluginConfiguration.load();
+
+        if (syncTask != null) {
+            syncTask.cancel();
         }
 
-        try {
-            this.getLogger().info("Cloning...");
-            CloneCommand cloneCommand = Git.cloneRepository()
-                .setURI(pluginConfiguration.packRepoUrl)
-                .setDirectory(tempPackDir);
-
-            // Authorization
-            if (pluginConfiguration.accessToken != null) {
-                UsernamePasswordCredentialsProvider credentialsProvider = new UsernamePasswordCredentialsProvider("oauth2", pluginConfiguration.accessToken);
-                cloneCommand.setCredentialsProvider(credentialsProvider);
-            }
-
-            Git git = cloneCommand.call();
-
-            this.getLogger().info("Reading config...");
-            JsonObject root = JsonParser.parseReader(new FileReader(new File(tempPackDir, "config.json"))).getAsJsonObject();
-
-            // Delete files
-            JsonArray filesToDelete = root.getAsJsonArray("deleteFilesBeforeInstall");
-            for (JsonElement element : filesToDelete) {
-                String path = element.getAsString();
-                this.getLogger().info("Deleting "+path);
-
-                File fileToDelete = new File(this.getDataFolder().getParentFile(), path);
-                FileUtils.deleteRecursion(fileToDelete);
-            }
-
-            // Copy new files
-            this.getLogger().info("Copying new files");
-            FileUtils.copyFileStructure(new File(tempPackDir, "pack"), this.getDataFolder().getParentFile());
-
-            // Reload ItemsAdderno
-            this.getLogger().info("Reloading ItemsAdder");
-            if (ItemsAdder.getPackUrl(false) == null) {
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "iareload");
-            } else {
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "iazip");
-            }
-
-            // TODO
-            //pluginConfiguration.lastCommitHash = git.
-
-            this.getLogger().info("Done");
-        } catch (GitAPIException | IOException e) {
-            throw new RuntimeException(e);
-        }
+        startSyncTask();
     }
 
     public static ItemsAdderContentsSync instance() {
@@ -111,7 +85,27 @@ public final class ItemsAdderContentsSync extends JavaPlugin {
         return pluginConfiguration;
     }
 
-    public File getTempPackDir() {
-        return tempPackDir;
+    public File getPackDir() {
+        return packDir;
+    }
+
+    public boolean isItemsAdderReloading() {
+        return itemsAdderReloading;
+    }
+
+    @ApiStatus.Internal
+    public void setItemsAdderReloading(boolean itemsAdderReloading) {
+        this.itemsAdderReloading = itemsAdderReloading;
+    }
+
+    public Plugin getItemsAdderInstance() {
+        return itemsAdderInstance;
+    }
+
+    public boolean canItemsAdderCreateResourcepack() {
+        FileConfiguration iaConfig = ItemsAdderContentsSync.instance().getItemsAdderInstance().getConfig();
+        ConfigurationSection hostingSection = iaConfig.getConfigurationSection("resource-pack.hosting");
+
+        return hostingSection.getBoolean("auto-external-host.enabled") || hostingSection.getBoolean("self-host.enabled");
     }
 }

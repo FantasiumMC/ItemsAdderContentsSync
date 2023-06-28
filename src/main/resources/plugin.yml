@@ -5,7 +5,3 @@ api-version: 1.19
 authors: [EpicPlayerA10]
 website: https://fanthstudios.pl
 depend: [ItemsAdder]
-commands:
-  itemsaddercontentssync:
-    aliases: "iacs"
-    permission: itemsaddercontentssync.use

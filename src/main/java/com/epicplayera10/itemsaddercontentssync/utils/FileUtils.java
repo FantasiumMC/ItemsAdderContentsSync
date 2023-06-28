@@ -3,6 +3,7 @@ package com.epicplayera10.itemsaddercontentssync.utils;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 
 public class FileUtils {
@@ -23,7 +24,7 @@ public class FileUtils {
                     copyFileStructure(srcFile, destFile, ignore);
                 }
             } else {
-                Files.copy(source.toPath(), target.toPath());
+                Files.copy(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
             }
         }
     }

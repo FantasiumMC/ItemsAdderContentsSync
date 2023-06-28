@@ -1,6 +1,7 @@
 package com.epicplayera10.itemsaddercontentssync.configuration;
 
 import com.epicplayera10.itemsaddercontentssync.ItemsAdderContentsSync;
+import com.epicplayera10.itemsaddercontentssync.configuration.serdes.MyOwnSerdesPack;
 import eu.okaeri.configs.ConfigManager;
 import eu.okaeri.configs.serdes.commons.SerdesCommons;
 import eu.okaeri.configs.validator.okaeri.OkaeriValidator;
@@ -20,6 +21,7 @@ public class ConfigurationFactory {
             it.withSerdesPack(registry -> {
                 registry.register(new SerdesCommons());
                 registry.register(new SerdesBukkit());
+                registry.register(new MyOwnSerdesPack());
             });
 
             it.withBindFile(pluginConfigurationFile);

@@ -8,24 +8,23 @@ version = '1.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
-    maven {
-        name = "papermc-repo"
-        url = "https://repo.papermc.io/repository/maven-public/"
-    }
-    maven {
-        name = "sonatype"
-        url = "https://oss.sonatype.org/content/groups/public/"
-    }
+    maven { url "https://repo.papermc.io/repository/maven-public/" }
+    maven { url "https://oss.sonatype.org/content/groups/public/" }
 
-    maven {
-        url 'https://jitpack.io'
-    }
+    // JGit
+    maven { url "https://jitpack.io" }
 
+    // ACF
+    maven { url "https://repo.aikar.co/content/groups/aikar/" }
+
+    // Okaeri
     maven { url "https://storehouse.okaeri.eu/repository/maven-public/" }
 }
 
 dependencies {
     compileOnly "io.papermc.paper:paper-api:1.19.4-R0.1-SNAPSHOT"
+
+    compileOnly 'com.github.LoneDev6:API-ItemsAdder:3.5.0b'
 
     implementation 'eu.okaeri:okaeri-configs-yaml-snakeyaml:5.0.0-beta.5'
     implementation 'eu.okaeri:okaeri-configs-yaml-bukkit:5.0.0-beta.5'
@@ -35,7 +34,14 @@ dependencies {
 
     implementation 'org.eclipse.jgit:org.eclipse.jgit:5.13.1.202206130422-r'
 
-    compileOnly 'com.github.LoneDev6:API-ItemsAdder:3.5.0b'
+    implementation "co.aikar:acf-paper:0.5.1-SNAPSHOT"
+}
+
+shadowJar {
+    relocate("eu.okaeri", "com.epicplayera10.itemsaddercontentssync.libs.eu.okaeri")
+    relocate("org.eclipse.jgit", "com.epicplayera10.itemsaddercontentssync.libs.org.eclipse.jgit")
+    relocate("co.aikar.commands", "com.epicplayera10.itemsaddercontentssync.libs.acf")
+    relocate("co.aikar.locales", "com.epicplayera10.itemsaddercontentssync.libs.locales")
 }
 
 assemble.dependsOn(shadowJar)
