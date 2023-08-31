@@ -46,7 +46,6 @@ public class IASyncManager {
                 File packDir = ItemsAdderContentsSync.instance().getPackDir();
 
                 Git git;
-                ItemsAdderContentsSync.instance().getLogger().info("Syncing...");
                 if (!packDir.exists() || !packDir.isDirectory() || !new File(packDir, ".git").exists()) {
                     FileUtils.deleteRecursion(packDir);
 
@@ -81,7 +80,6 @@ public class IASyncManager {
                     .getName();
 
                 if (!force && pluginConfiguration.lastCommitHash.equals(latestCommitHash)) {
-                    ItemsAdderContentsSync.instance().getLogger().info("IA Pack is up-to-date!");
                     return;
                 }
 
