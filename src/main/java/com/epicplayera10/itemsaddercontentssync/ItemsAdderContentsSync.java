@@ -5,6 +5,8 @@ import com.epicplayera10.itemsaddercontentssync.commands.MainCommand;
 import com.epicplayera10.itemsaddercontentssync.configuration.ConfigurationFactory;
 import com.epicplayera10.itemsaddercontentssync.configuration.PluginConfiguration;
 import com.epicplayera10.itemsaddercontentssync.listeners.ItemsAdderListener;
+import com.epicplayera10.itemsaddercontentssync.listeners.ModelEngineListener;
+import com.epicplayera10.itemsaddercontentssync.utils.ThirdPartyPluginStates;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -12,22 +14,23 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.eclipse.jgit.transport.CredentialsProvider;
-import org.jetbrains.annotations.ApiStatus;
 
 import java.io.File;
+import java.util.concurrent.CompletableFuture;
 
 public final class ItemsAdderContentsSync extends JavaPlugin {
 
     private final File pluginConfigurationFile = new File(this.getDataFolder(), "config.yml");
 
-    private final File packDir = new File(this.getDataFolder(), "packrepo");
+    private final File repoDir = new File(this.getDataFolder(), "packrepo");
 
     private static ItemsAdderContentsSync instance;
     private Plugin itemsAdderInstance;
 
-    private PluginConfiguration pluginConfiguration;
+    // State manager
+    private ThirdPartyPluginStates thirdPartyPluginStates = new ThirdPartyPluginStates();
 
-    private boolean itemsAdderReloading = true;
+    private PluginConfiguration pluginConfiguration;
 
     private BukkitTask syncTask = null;
 
@@ -42,12 +45,23 @@ public final class ItemsAdderContentsSync extends JavaPlugin {
 
         Bukkit.getPluginManager().registerEvents(new ItemsAdderListener(), this);
 
+        if (Bukkit.getPluginManager().isPluginEnabled("ModelEngine")) {
+            Bukkit.getPluginManager().registerEvents(new ModelEngineListener(), this);
+        }
+
         // Register command
         PaperCommandManager manager = new PaperCommandManager(this);
         manager.enableUnstableAPI("help");
         manager.enableUnstableAPI("brigadier");
 
         manager.registerCommand(new MainCommand());
+
+        // Sync on startup
+        if (this.pluginConfiguration.syncOnStartup) {
+            CompletableFuture.allOf(this.thirdPartyPluginStates.itemsAdderReloadingFuture, thirdPartyPluginStates.modelEngineReloadingFuture).thenAccept(unused -> {
+                IASyncManager.syncPack(false);
+            });
+        }
 
         // Start task
         startSyncTask();
@@ -85,17 +99,12 @@ public final class ItemsAdderContentsSync extends JavaPlugin {
         return pluginConfiguration;
     }
 
-    public File getPackDir() {
-        return packDir;
+    public File getRepoDir() {
+        return repoDir;
     }
 
-    public boolean isItemsAdderReloading() {
-        return itemsAdderReloading;
-    }
-
-    @ApiStatus.Internal
-    public void setItemsAdderReloading(boolean itemsAdderReloading) {
-        this.itemsAdderReloading = itemsAdderReloading;
+    public ThirdPartyPluginStates getThirdPartyPluginStates() {
+        return thirdPartyPluginStates;
     }
 
     public Plugin getItemsAdderInstance() {

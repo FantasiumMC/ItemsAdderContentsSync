@@ -19,12 +19,16 @@ repositories {
 
     // Okaeri
     maven { url "https://storehouse.okaeri.eu/repository/maven-public/" }
+
+    // Lumine
+    maven { url "https://mvn.lumine.io/repository/maven-public/" }
 }
 
 dependencies {
     compileOnly "io.papermc.paper:paper-api:1.19.4-R0.1-SNAPSHOT"
 
     compileOnly 'com.github.LoneDev6:API-ItemsAdder:3.5.0b'
+    compileOnly "com.ticxo.modelengine:api:R3.1.8"
 
     implementation 'eu.okaeri:okaeri-configs-yaml-snakeyaml:5.0.0-beta.5'
     implementation 'eu.okaeri:okaeri-configs-yaml-bukkit:5.0.0-beta.5'
