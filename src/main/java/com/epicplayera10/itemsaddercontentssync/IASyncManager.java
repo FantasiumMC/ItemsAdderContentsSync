@@ -20,12 +20,10 @@ import org.eclipse.jgit.api.errors.RefAlreadyExistsException;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 
 public class IASyncManager {
@@ -135,7 +133,7 @@ public class IASyncManager {
 
         // Pre reloads
         // Reload ModelEngine
-        if (shouldPluginBeReloaded(packDir, "ModelEngine")) {
+        if (shouldBePluginReloaded(packDir, "ModelEngine")) {
             reloadModelEngine();
         }
 
@@ -147,7 +145,7 @@ public class IASyncManager {
                 // Post reloads
                 return ItemsAdderContentsSync.instance().getThirdPartyPluginStates().itemsAdderReloadingFuture.thenAccept(unused1 -> {
                     // Reload CosmeticsCore
-                    if (shouldPluginBeReloaded(packDir, "CosmeticsCore")) {
+                    if (shouldBePluginReloaded(packDir, "CosmeticsCore")) {
                         reloadCosmeticsCore();
                     }
                 });
@@ -161,7 +159,7 @@ public class IASyncManager {
         ItemsAdderContentsSync.instance().getLogger().info("Done");
     }
 
-    private static boolean shouldPluginBeReloaded(File packDir, String pluginName) {
+    private static boolean shouldBePluginReloaded(File packDir, String pluginName) {
         return new File(packDir, pluginName).exists() && Bukkit.getPluginManager().isPluginEnabled(pluginName);
     }
 
