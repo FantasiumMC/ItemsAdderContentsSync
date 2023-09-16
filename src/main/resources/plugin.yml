@@ -6,4 +6,4 @@ authors: [EpicPlayerA10]
 website: https://fanthstudios.pl
 
 depend: [ItemsAdder]
-softdepend: [ModelEngine]
+softdepend: [ModelEngine, CosmeticsCore]
