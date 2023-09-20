@@ -16,12 +16,12 @@ public class PluginConfiguration extends OkaeriConfig {
 
     @Comment("")
     @Comment("Czy plugin powinien zsynchronizować paczkę (pobrać nową i wgrać) przy starcie serwera")
-    public boolean syncOnStartup = false;
+    public boolean syncOnStartup = true;
 
     @Comment("")
     @Comment("Co ile minut ma się odpalać timer który synchronizuje paczkę.")
     @Comment("Ustaw na -1 jeśli nie chcesz aby paczka się automatycznie synchronizowała")
-    public int syncRepeatMinutes = -1;
+    public int syncRepeatMinutes = 5;
 
     @Comment("")
     @Comment("Link do repo gdzie znajduje się paczka")
