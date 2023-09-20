@@ -4,6 +4,7 @@ import co.aikar.commands.PaperCommandManager;
 import com.epicplayera10.itemsaddercontentssync.commands.MainCommand;
 import com.epicplayera10.itemsaddercontentssync.configuration.ConfigurationFactory;
 import com.epicplayera10.itemsaddercontentssync.configuration.PluginConfiguration;
+import com.epicplayera10.itemsaddercontentssync.listeners.DeployResourcepackMsgListener;
 import com.epicplayera10.itemsaddercontentssync.listeners.ItemsAdderListener;
 import com.epicplayera10.itemsaddercontentssync.listeners.ModelEngineListener;
 import com.epicplayera10.itemsaddercontentssync.utils.ThirdPartyPluginStates;
@@ -40,8 +41,11 @@ public final class ItemsAdderContentsSync extends JavaPlugin {
         itemsAdderInstance = Bukkit.getPluginManager().getPlugin("ItemsAdder");
 
         this.pluginConfiguration = ConfigurationFactory.createPluginConfiguration(this.pluginConfigurationFile);
-
         CredentialsProvider.setDefault(this.pluginConfiguration.credentials);
+
+        // Listeners for proxy communication
+        //Bukkit.getMessenger().registerIncomingPluginChannel(this, "iacs:deploy_resourcepack", new DeployResourcepackMsgListener());
+        //Bukkit.getMessenger().registerOutgoingPluginChannel(this, "iacs:resourcepack_ready");
 
         Bukkit.getPluginManager().registerEvents(new ItemsAdderListener(), this);
 

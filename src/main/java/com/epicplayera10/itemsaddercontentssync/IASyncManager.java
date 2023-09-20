@@ -41,7 +41,13 @@ public class IASyncManager {
         PLUGINS_TO_DELETE_FILES.put("CosmeticsCore", "CosmeticsCore/cosmetics");
     }
 
-    public static CompletableFuture<Void> syncPack(boolean force) {
+    /**
+     * Sync pack
+     *
+     * @param force Should sync pack despite that pack didn't change
+     * @return A future which returns a boolean. "true" means that there was a new version of the pack
+     */
+    public static CompletableFuture<Boolean> syncPack(boolean force) {
         if (isSyncing) {
             throw new IllegalStateException("Tried to call syncPack() while syncing!");
         }
@@ -51,7 +57,7 @@ public class IASyncManager {
         }
 
         isSyncing = true;
-        return CompletableFuture.runAsync(() -> {
+        return CompletableFuture.supplyAsync(() -> {
             PluginConfiguration pluginConfiguration = ItemsAdderContentsSync.instance().getPluginConfiguration();
 
             File repoDir = ItemsAdderContentsSync.instance().getRepoDir();
@@ -70,16 +76,17 @@ public class IASyncManager {
                         .getName();
 
                 if (!force && pluginConfiguration.lastCommitHash.equals(latestCommitHash)) {
-                    return;
+                    return false;
                 }
 
                 // Update pack
                 updatePack(repoDir, latestCommitHash);
 
+                return true;
             } catch (GitAPIException | IOException e) {
                 throw new RuntimeException(e);
             }
-        }).whenComplete((unused, ex) -> {
+        }).whenComplete((wasNewerVersion, ex) -> {
             isSyncing = false;
             if (ex != null) {
                 ItemsAdderContentsSync.instance().getLogger().log(Level.SEVERE, "An error occurred while syncing pack", ex);
@@ -131,32 +138,55 @@ public class IASyncManager {
         ItemsAdderContentsSync.instance().getLogger().info("Copying new files");
         FileUtils.copyFileStructure(packDir, ItemsAdderContentsSync.instance().getDataFolder().getParentFile());
 
-        // Pre reloads
-        // Reload ModelEngine
-        if (shouldBePluginReloaded(packDir, "ModelEngine")) {
-            reloadModelEngine();
-        }
-
-        // Reload ItemsAdder
-        if (new File(packDir, "ItemsAdder").exists()) {
-            ItemsAdderContentsSync.instance().getThirdPartyPluginStates().modelEngineReloadingFuture.thenCompose(unused -> {
-                reloadItemsAdder();
-
-                // Post reloads
-                return ItemsAdderContentsSync.instance().getThirdPartyPluginStates().itemsAdderReloadingFuture.thenAccept(unused1 -> {
-                    // Reload CosmeticsCore
-                    if (shouldBePluginReloaded(packDir, "CosmeticsCore")) {
-                        reloadCosmeticsCore();
-                    }
-                });
-            });
-        }
+        // Reload plugins
+        reloadPlugins(packDir);
 
         // Store latest commit hash
         pluginConfiguration.lastCommitHash = latestCommitHash;
         pluginConfiguration.save();
 
         ItemsAdderContentsSync.instance().getLogger().info("Done");
+    }
+
+    /**
+     * Reloads plugins
+     *
+     * @param packDir Pack directory
+     */
+    private static void reloadPlugins(File packDir) {
+        CompletableFuture<Void> future = CompletableFuture.completedFuture(null);
+
+        // Beautiful futures chain :D
+
+        // Pre reloads
+        // Reload ModelEngine
+        if (shouldBePluginReloaded(packDir, "ModelEngine")) {
+            ItemsAdderContentsSync.instance().getThirdPartyPluginStates().modelEngineReloadingFuture = new CompletableFuture<>();
+
+            future = future.thenCompose((unused) -> {
+                reloadModelEngine();
+                return ItemsAdderContentsSync.instance().getThirdPartyPluginStates().modelEngineReloadingFuture;
+            });
+        }
+
+        // Reload ItemsAdder
+        if (new File(packDir, "ItemsAdder").exists()) {
+            ItemsAdderContentsSync.instance().getThirdPartyPluginStates().itemsAdderReloadingFuture = new CompletableFuture<>();
+
+            future = future.thenCompose((unused) -> {
+                reloadItemsAdder();
+
+                return ItemsAdderContentsSync.instance().getThirdPartyPluginStates().itemsAdderReloadingFuture;
+            });
+        }
+
+        // Post reloads
+        // Reload CosmeticsCore
+        if (shouldBePluginReloaded(packDir, "CosmeticsCore")) {
+            future.thenAccept((unused) -> {
+                reloadCosmeticsCore();
+            });
+        }
     }
 
     private static boolean shouldBePluginReloaded(File packDir, String pluginName) {
@@ -177,7 +207,6 @@ public class IASyncManager {
     private static void reloadModelEngine() {
         ItemsAdderContentsSync.instance().getLogger().info("Reloading ModelEngine");
 
-        ItemsAdderContentsSync.instance().getThirdPartyPluginStates().modelEngineReloadingFuture = new CompletableFuture<>();
         runCommandEnsureSync(Bukkit.getConsoleSender(), "meg reload");
     }
 
@@ -187,12 +216,12 @@ public class IASyncManager {
     private static void reloadItemsAdder() {
         ItemsAdderContentsSync.instance().getLogger().info("Reloading ItemsAdder");
 
-        ItemsAdderContentsSync.instance().getThirdPartyPluginStates().itemsAdderReloadingFuture = new CompletableFuture<>();
-        if (ItemsAdderContentsSync.instance().canItemsAdderCreateResourcepack()) {
+        runCommandEnsureSync(Bukkit.getConsoleSender(), "iareload");
+        /*if (ItemsAdderContentsSync.instance().canItemsAdderCreateResourcepack()) {
             runCommandEnsureSync(Bukkit.getConsoleSender(), "iazip");
         } else {
             runCommandEnsureSync(Bukkit.getConsoleSender(), "iareload");
-        }
+        }*/
     }
 
     private static void runCommandEnsureSync(CommandSender sender, String command) {

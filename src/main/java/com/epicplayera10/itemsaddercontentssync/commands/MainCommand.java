@@ -34,14 +34,18 @@ public class MainCommand extends BaseCommand {
             return;
         }
 
-        IASyncManager.syncPack(force).whenComplete(((unused, ex) -> {
+        IASyncManager.syncPack(force).whenComplete((wasNewerVersion, ex) -> {
             if (ex == null) {
-                sender.sendMessage("Pomyślnie zsynchronizowano!");
+                if (wasNewerVersion) {
+                    sender.sendMessage("Pomyślnie zsynchronizowano!");
+                } else {
+                    sender.sendMessage("Już posiadasz najnowszą wersje paczki");
+                }
             } else {
                 sender.sendMessage("Wystąpił błąd podczas synchronizowania. Po więcej informacji zobacz konsole.");
                 ItemsAdderContentsSync.instance().getLogger().log(Level.SEVERE, "An error occured while syncing ItemsAdder files!", ex);
             }
-        }));
+        });
     }
 
     @Subcommand("reload")

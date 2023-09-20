@@ -12,13 +12,13 @@ public class ItemsAdderListener implements Listener {
     public void onIAReloadFinish(ItemsAdderLoadDataEvent event) {
         if (event.getCause() == ItemsAdderLoadDataEvent.Cause.FIRST_LOAD) {
             ItemsAdderContentsSync.instance().getThirdPartyPluginStates().itemsAdderReloadingFuture.complete(null);
-        } else if (!ItemsAdderContentsSync.instance().canItemsAdderCreateResourcepack() && event.getCause() == ItemsAdderLoadDataEvent.Cause.RELOAD) {
+        } else if (/*!ItemsAdderContentsSync.instance().canItemsAdderCreateResourcepack() &&*/ event.getCause() == ItemsAdderLoadDataEvent.Cause.RELOAD) {
             ItemsAdderContentsSync.instance().getThirdPartyPluginStates().itemsAdderReloadingFuture.complete(null);
         }
     }
 
     @EventHandler
     public void onIAResourcepackFinish(ItemsAdderPackCompressedEvent event) {
-        ItemsAdderContentsSync.instance().getThirdPartyPluginStates().itemsAdderReloadingFuture.complete(null);
+        //ItemsAdderContentsSync.instance().getThirdPartyPluginStates().itemsAdderReloadingFuture.complete(null);
     }
 }
