@@ -16,7 +16,6 @@ import org.bukkit.scheduler.BukkitTask;
 import org.eclipse.jgit.transport.CredentialsProvider;
 
 import java.io.File;
-import java.util.concurrent.CompletableFuture;
 
 public final class ItemsAdderContentsSync extends JavaPlugin {
 
@@ -60,20 +59,22 @@ public final class ItemsAdderContentsSync extends JavaPlugin {
         manager.registerCommand(new MainCommand());
 
         // Sync on startup
-        if (this.pluginConfiguration.syncOnStartup) {
-            this.getLogger().info("Syncing pack on startup...");
-
-            boolean wasNewerVersion = IASyncManager.syncPack(false, true).join();
-
-            if (wasNewerVersion) {
-                this.getLogger().info("Synchronized successfully!");
-            } else {
-                this.getLogger().info("You are using the latest pack version!");
-            }
-        }
+        syncOnStartup();
 
         // Start task
         startSyncTask();
+    }
+
+    private void syncOnStartup() {
+        this.getLogger().info("Syncing pack on startup...");
+
+        boolean wasNewerVersion = IASyncManager.syncPack(false, true).join();
+
+        if (wasNewerVersion) {
+            this.getLogger().info("Synchronized successfully!");
+        } else {
+            this.getLogger().info("You are using the latest pack version!");
+        }
     }
 
     private void startSyncTask() {

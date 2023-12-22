@@ -2,6 +2,8 @@ package com.epicplayera10.itemsaddercontentssync;
 
 import com.epicplayera10.itemsaddercontentssync.configuration.PluginConfiguration;
 import com.epicplayera10.itemsaddercontentssync.utils.FileUtils;
+import com.epicplayera10.itemsaddercontentssync.utils.WinSymlinkFlag;
+import com.epicplayera10.itemsaddercontentssync.utils.WindowsSymlinkUtils;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.gson.Gson;
@@ -22,6 +24,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -31,7 +35,7 @@ import java.util.logging.Level;
 public class IASyncManager {
     private static final Gson GSON = new GsonBuilder().create();
 
-    private static final Multimap<String, String> PLUGINS_TO_DELETE_FILES = Multimaps.newMultimap(new HashMap<>(), ArrayList::new);
+    private static final Multimap<String, SymlinkOptions> PLUGINS_SYMLINKS = Multimaps.newMultimap(new HashMap<>(), ArrayList::new);
 
     private static final File LAST_COMMIT_HASH_FILE = new File(ItemsAdderContentsSync.instance().getDataFolder(), "lastcommithash");
 
@@ -39,10 +43,19 @@ public class IASyncManager {
     private static boolean isSyncing = false;
 
     static {
-        // Init PLUGINS_TO_DELETE_FILES
-        PLUGINS_TO_DELETE_FILES.put("ItemsAdder", "ItemsAdder/contents");
-        PLUGINS_TO_DELETE_FILES.put("ModelEngine", "ModelEngine/blueprints");
-        PLUGINS_TO_DELETE_FILES.put("CosmeticsCore", "CosmeticsCore/cosmetics");
+        // Init PLUGINS_SYMLINKS
+        PLUGINS_SYMLINKS.put("ItemsAdder", new SymlinkOptions("ItemsAdder/contents", true));
+        PLUGINS_SYMLINKS.put("ItemsAdder", new SymlinkOptions("ItemsAdder/storage/custom_fires_ids_cache.yml", false));
+        PLUGINS_SYMLINKS.put("ItemsAdder", new SymlinkOptions("ItemsAdder/storage/font_images_unicode_cache.yml", false));
+        PLUGINS_SYMLINKS.put("ItemsAdder", new SymlinkOptions("ItemsAdder/storage/items_ids_cache.yml", false));
+        PLUGINS_SYMLINKS.put("ItemsAdder", new SymlinkOptions("ItemsAdder/storage/real_blocks_ids_cache.yml", false));
+        PLUGINS_SYMLINKS.put("ItemsAdder", new SymlinkOptions("ItemsAdder/storage/real_blocks_note_ids_cache.yml", false));
+        PLUGINS_SYMLINKS.put("ItemsAdder", new SymlinkOptions("ItemsAdder/storage/real_transparent_blocks_ids_cache.yml", false));
+        PLUGINS_SYMLINKS.put("ItemsAdder", new SymlinkOptions("ItemsAdder/storage/real_wire_ids_cache.yml", false));
+
+        PLUGINS_SYMLINKS.put("ModelEngine", new SymlinkOptions("ModelEngine/blueprints", true));
+
+        PLUGINS_SYMLINKS.put("CosmeticsCore", new SymlinkOptions("CosmeticsCore/cosmetics", true));
     }
 
     private static void writeLastCommitHash(String lastCommitHash) throws IOException {
@@ -127,8 +140,10 @@ public class IASyncManager {
 
         File packDir = new File(repoDir, "pack");
 
+        createSymlinks(packDir);
+
         // Delete files
-        ItemsAdderContentsSync.instance().getLogger().info("Deleting files...");
+        /*ItemsAdderContentsSync.instance().getLogger().info("Deleting files...");
         for (var entry : PLUGINS_TO_DELETE_FILES.asMap().entrySet()) {
             String pluginName = entry.getKey();
             Collection<String> pathsToDelete = entry.getValue();
@@ -146,14 +161,14 @@ public class IASyncManager {
                     FileUtils.deleteRecursion(file);
                 }
             }
-        }
+        }*/
 
         // Handle config
         handleConfig(root);
 
         // Copy new files
-        ItemsAdderContentsSync.instance().getLogger().info("Copying new files");
-        FileUtils.copyFileStructure(packDir, ItemsAdderContentsSync.instance().getDataFolder().getParentFile());
+        //ItemsAdderContentsSync.instance().getLogger().info("Copying new files");
+        //FileUtils.copyFileStructure(packDir, ItemsAdderContentsSync.instance().getDataFolder().getParentFile());
 
         // We don't need to reload plugins before they started
         if (!isServerStartup) {
@@ -165,6 +180,52 @@ public class IASyncManager {
         writeLastCommitHash(latestCommitHash);
 
         ItemsAdderContentsSync.instance().getLogger().info("Done");
+    }
+
+    private static void createSymlinks(File packDir) throws IOException {
+        File pluginsDir = ItemsAdderContentsSync.instance().getDataFolder().getParentFile();
+
+        for (var entry : PLUGINS_SYMLINKS.asMap().entrySet()) {
+            String pluginName = entry.getKey();
+            Collection<SymlinkOptions> symlinkOptionsList = entry.getValue();
+
+            if (new File(packDir, pluginName).isDirectory()) {
+                for (SymlinkOptions symlinkOptions : symlinkOptionsList) {
+                    File linkPath = new File(pluginsDir, symlinkOptions.path);
+
+                    if (linkPath.exists()) {
+                        if (isSymlink(linkPath)) {
+                            continue;
+                        } else {
+                            // Delete non-symlinks
+                            FileUtils.deleteRecursion(linkPath);
+                        }
+                    }
+
+                    linkPath.getParentFile().mkdirs();
+
+                    File targetPath = new File(packDir, symlinkOptions.path);
+                    // Create symlink
+                    if (symlinkOptions.isDirectory && System.getProperty("os.name").startsWith("Windows")) {
+                        // Windows has its own way of directory symlinks
+                        WindowsSymlinkUtils.createJunctionSymlink(linkPath, targetPath);
+                    } else {
+                        Files.createSymbolicLink(linkPath.getAbsoluteFile().toPath(), targetPath.getAbsoluteFile().toPath());
+                    }
+                }
+            }
+        }
+    }
+
+    private static boolean isSymlink(File file) throws IOException {
+        BasicFileAttributes attrs = Files.readAttributes(file.toPath(), BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+
+        if (attrs.isSymbolicLink()) {
+            return true;
+        } else {
+            boolean isWindows = System.getProperty("os.name").toLowerCase().contains("windows");
+            return isWindows && attrs.isDirectory() && attrs.isOther();
+        }
     }
 
     /**
@@ -341,5 +402,8 @@ public class IASyncManager {
 
     public static boolean isSyncing() {
         return isSyncing;
+    }
+
+    private record SymlinkOptions(String path, boolean isDirectory) {
     }
 }

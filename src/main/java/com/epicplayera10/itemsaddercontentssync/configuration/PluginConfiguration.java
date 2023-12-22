@@ -10,9 +10,6 @@ import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 
 @Names(strategy = NameStrategy.HYPHEN_CASE, modifier = NameModifier.TO_LOWER_CASE)
 public class PluginConfiguration extends OkaeriConfig {
-    @Comment("")
-    @Comment("Czy plugin powinien zsynchronizować paczkę (pobrać nową i wgrać) przy starcie serwera")
-    public boolean syncOnStartup = true;
 
     @Comment("")
     @Comment("Co ile minut ma się odpalać timer który synchronizuje paczkę.")
