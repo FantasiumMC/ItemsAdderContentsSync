@@ -4,7 +4,6 @@ import co.aikar.commands.PaperCommandManager;
 import com.epicplayera10.itemsaddercontentssync.commands.MainCommand;
 import com.epicplayera10.itemsaddercontentssync.configuration.ConfigurationFactory;
 import com.epicplayera10.itemsaddercontentssync.configuration.PluginConfiguration;
-import com.epicplayera10.itemsaddercontentssync.listeners.DeployResourcepackMsgListener;
 import com.epicplayera10.itemsaddercontentssync.listeners.ItemsAdderListener;
 import com.epicplayera10.itemsaddercontentssync.listeners.ModelEngineListener;
 import com.epicplayera10.itemsaddercontentssync.utils.ThirdPartyPluginStates;
@@ -29,7 +28,7 @@ public final class ItemsAdderContentsSync extends JavaPlugin {
     private Plugin itemsAdderInstance;
 
     // State manager
-    private ThirdPartyPluginStates thirdPartyPluginStates = new ThirdPartyPluginStates();
+    private final ThirdPartyPluginStates thirdPartyPluginStates = new ThirdPartyPluginStates();
 
     private PluginConfiguration pluginConfiguration;
 
@@ -62,9 +61,15 @@ public final class ItemsAdderContentsSync extends JavaPlugin {
 
         // Sync on startup
         if (this.pluginConfiguration.syncOnStartup) {
-            CompletableFuture.allOf(this.thirdPartyPluginStates.itemsAdderReloadingFuture, thirdPartyPluginStates.modelEngineReloadingFuture).thenAccept(unused -> {
-                IASyncManager.syncPack(false);
-            });
+            this.getLogger().info("Syncing pack on startup...");
+
+            boolean wasNewerVersion = IASyncManager.syncPack(false, true).join();
+
+            if (wasNewerVersion) {
+                this.getLogger().info("Synchronized successfully!");
+            } else {
+                this.getLogger().info("You are using the latest pack version!");
+            }
         }
 
         // Start task

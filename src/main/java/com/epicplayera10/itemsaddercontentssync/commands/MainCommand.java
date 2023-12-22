@@ -12,6 +12,8 @@ import co.aikar.commands.annotation.Subcommand;
 import co.aikar.commands.annotation.Syntax;
 import com.epicplayera10.itemsaddercontentssync.IASyncManager;
 import com.epicplayera10.itemsaddercontentssync.ItemsAdderContentsSync;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
 
 import java.util.logging.Level;
@@ -37,12 +39,12 @@ public class MainCommand extends BaseCommand {
         IASyncManager.syncPack(force).whenComplete((wasNewerVersion, ex) -> {
             if (ex == null) {
                 if (wasNewerVersion) {
-                    sender.sendMessage("Pomyślnie zsynchronizowano!");
+                    sender.sendMessage(Component.text("Pomyślnie zsynchronizowano!").color(NamedTextColor.GREEN));
                 } else {
-                    sender.sendMessage("Już posiadasz najnowszą wersje paczki");
+                    sender.sendMessage(Component.text("Już posiadasz najnowszą wersje paczki").color(NamedTextColor.RED));
                 }
             } else {
-                sender.sendMessage("Wystąpił błąd podczas synchronizowania. Po więcej informacji zobacz konsole.");
+                sender.sendMessage(Component.text("Wystąpił błąd podczas synchronizowania. Po więcej informacji zobacz konsole.").color(NamedTextColor.RED));
                 ItemsAdderContentsSync.instance().getLogger().log(Level.SEVERE, "An error occured while syncing ItemsAdder files!", ex);
             }
         });
@@ -52,6 +54,6 @@ public class MainCommand extends BaseCommand {
     @Description("Przeładowywuje plugin")
     public void reload(CommandSender sender) {
         ItemsAdderContentsSync.instance().reload();
-        sender.sendMessage("Przeładowano!");
+        sender.sendMessage(Component.text("Przeładowano!").color(NamedTextColor.GREEN));
     }
 }

@@ -16,10 +16,12 @@ import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.RefAlreadyExistsException;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -31,6 +33,8 @@ public class IASyncManager {
 
     private static final Multimap<String, String> PLUGINS_TO_DELETE_FILES = Multimaps.newMultimap(new HashMap<>(), ArrayList::new);
 
+    private static final File LAST_COMMIT_HASH_FILE = new File(ItemsAdderContentsSync.instance().getDataFolder(), "lastcommithash");
+
     // Some kind of lock
     private static boolean isSyncing = false;
 
@@ -41,25 +45,40 @@ public class IASyncManager {
         PLUGINS_TO_DELETE_FILES.put("CosmeticsCore", "CosmeticsCore/cosmetics");
     }
 
+    private static void writeLastCommitHash(String lastCommitHash) throws IOException {
+        Files.writeString(LAST_COMMIT_HASH_FILE.toPath(), lastCommitHash);
+    }
+
+    @Nullable
+    private static String readLastCommitHash() throws IOException {
+        if (!LAST_COMMIT_HASH_FILE.exists()) return null;
+
+        return Files.readAllLines(LAST_COMMIT_HASH_FILE.toPath()).get(0);
+    }
+
+    public static CompletableFuture<Boolean> syncPack(boolean force) {
+        return syncPack(force, false);
+    }
+
     /**
      * Sync pack
      *
      * @param force Should sync pack despite that pack didn't change
+     * @param isServerStartup Is server is startup state
+     *
      * @return A future which returns a boolean. "true" means that there was a new version of the pack
      */
-    public static CompletableFuture<Boolean> syncPack(boolean force) {
+    public static CompletableFuture<Boolean> syncPack(boolean force, boolean isServerStartup) {
         if (isSyncing) {
             throw new IllegalStateException("Tried to call syncPack() while syncing!");
         }
 
-        if (!ItemsAdderContentsSync.instance().getThirdPartyPluginStates().isAllReloaded()) {
+        if (!isServerStartup && !ItemsAdderContentsSync.instance().getThirdPartyPluginStates().isAllReloaded()) {
             throw new IllegalStateException("Tried to call syncPack() while one of required plugins is reloading!");
         }
 
         isSyncing = true;
         return CompletableFuture.supplyAsync(() -> {
-            PluginConfiguration pluginConfiguration = ItemsAdderContentsSync.instance().getPluginConfiguration();
-
             File repoDir = ItemsAdderContentsSync.instance().getRepoDir();
 
             try (Git git = initRepo(repoDir)) {
@@ -75,12 +94,12 @@ public class IASyncManager {
                         .next()
                         .getName();
 
-                if (!force && pluginConfiguration.lastCommitHash.equals(latestCommitHash)) {
+                if (!force && latestCommitHash.equals(readLastCommitHash())) {
                     return false;
                 }
 
                 // Update pack
-                updatePack(repoDir, latestCommitHash);
+                updatePack(repoDir, latestCommitHash, isServerStartup);
 
                 return true;
             } catch (GitAPIException | IOException e) {
@@ -100,10 +119,8 @@ public class IASyncManager {
      * @param repoDir Repository Directory
      * @param latestCommitHash Latest commit hash in this repository
      */
-    private static void updatePack(File repoDir, String latestCommitHash) throws IOException {
+    private static void updatePack(File repoDir, String latestCommitHash, boolean isServerStartup) throws IOException {
         ItemsAdderContentsSync.instance().getLogger().log(Level.INFO, "Found newer version of the pack (" + latestCommitHash + ")! Updating...");
-
-        PluginConfiguration pluginConfiguration = ItemsAdderContentsSync.instance().getPluginConfiguration();
 
         // Start updating
         JsonObject root = JsonParser.parseReader(new FileReader(new File(repoDir, "config.json"))).getAsJsonObject();
@@ -138,12 +155,14 @@ public class IASyncManager {
         ItemsAdderContentsSync.instance().getLogger().info("Copying new files");
         FileUtils.copyFileStructure(packDir, ItemsAdderContentsSync.instance().getDataFolder().getParentFile());
 
-        // Reload plugins
-        reloadPlugins(packDir);
+        // We don't need to reload plugins before they started
+        if (!isServerStartup) {
+            // Reload plugins
+            reloadPlugins(packDir);
+        }
 
         // Store latest commit hash
-        pluginConfiguration.lastCommitHash = latestCommitHash;
-        pluginConfiguration.save();
+        writeLastCommitHash(latestCommitHash);
 
         ItemsAdderContentsSync.instance().getLogger().info("Done");
     }
@@ -165,6 +184,7 @@ public class IASyncManager {
 
             future = future.thenCompose((unused) -> {
                 reloadModelEngine();
+
                 return ItemsAdderContentsSync.instance().getThirdPartyPluginStates().modelEngineReloadingFuture;
             });
         }
@@ -247,8 +267,8 @@ public class IASyncManager {
 
         if (!repoDir.exists() || !repoDir.isDirectory() || !new File(repoDir, ".git").exists()) {
             // Clone repo
+            ItemsAdderContentsSync.instance().getLogger().info("Cloning repo...");
             FileUtils.deleteRecursion(repoDir);
-
 
             git = Git.cloneRepository()
                     .setURI(pluginConfiguration.packRepoUrl)
@@ -256,6 +276,7 @@ public class IASyncManager {
                     .setDirectory(repoDir)
                     .call();
 
+            ItemsAdderContentsSync.instance().getLogger().info("Cloned repo!");
         } else {
             // Open repo
             git = Git.open(repoDir);

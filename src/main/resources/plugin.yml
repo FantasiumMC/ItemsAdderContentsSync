@@ -5,5 +5,4 @@ api-version: 1.19
 authors: [EpicPlayerA10]
 website: https://fanthstudios.pl
 
-depend: [ItemsAdder]
-softdepend: [ModelEngine, CosmeticsCore]
+loadbefore: [ItemsAdder, ModelEngine, CosmeticsCore]
