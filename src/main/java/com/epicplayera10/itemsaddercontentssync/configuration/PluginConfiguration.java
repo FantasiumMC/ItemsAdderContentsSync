@@ -1,5 +1,6 @@
 package com.epicplayera10.itemsaddercontentssync.configuration;
 
+import com.epicplayera10.itemsaddercontentssync.syncmanager.PutContentMode;
 import eu.okaeri.configs.OkaeriConfig;
 import eu.okaeri.configs.annotation.Comment;
 import eu.okaeri.configs.annotation.NameModifier;
@@ -15,6 +16,13 @@ public class PluginConfiguration extends OkaeriConfig {
     @Comment("Co ile minut ma się odpalać timer który synchronizuje paczkę.")
     @Comment("Ustaw na -1 jeśli nie chcesz aby paczka się automatycznie synchronizowała")
     public int syncRepeatMinutes = 5;
+
+    @Comment("")
+    @Comment("W jaki sposób mają być podmieniane pliki na te nowe z paczki")
+    @Comment("- REPLACE_FILES - Kopiuje pliki w odpowiednie miejsca. Kompatybilny z każdym systemem operacyjnym")
+    @Comment("- SYMLINKS - Tworzy symlinki dzięki czemu nie trzeba kopiować plików i można")
+    @Comment("  bezpośrednio robić commity z serwera. Czasami może się psuć na Windowsie.")
+    public PutContentMode putContentMode = PutContentMode.SYMLINKS;
 
     @Comment("")
     @Comment("Link do repo gdzie znajduje się paczka")

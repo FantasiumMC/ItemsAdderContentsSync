@@ -1,6 +1,6 @@
 package com.epicplayera10.itemsaddercontentssync.listeners;
 
-import com.epicplayera10.itemsaddercontentssync.IASyncManager;
+import com.epicplayera10.itemsaddercontentssync.syncmanager.IASyncManager;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 import org.jetbrains.annotations.NotNull;

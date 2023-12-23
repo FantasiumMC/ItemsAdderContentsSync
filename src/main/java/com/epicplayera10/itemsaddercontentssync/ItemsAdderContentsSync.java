@@ -6,6 +6,7 @@ import com.epicplayera10.itemsaddercontentssync.configuration.ConfigurationFacto
 import com.epicplayera10.itemsaddercontentssync.configuration.PluginConfiguration;
 import com.epicplayera10.itemsaddercontentssync.listeners.ItemsAdderListener;
 import com.epicplayera10.itemsaddercontentssync.listeners.ModelEngineListener;
+import com.epicplayera10.itemsaddercontentssync.syncmanager.IASyncManager;
 import com.epicplayera10.itemsaddercontentssync.utils.ThirdPartyPluginStates;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
@@ -62,7 +63,7 @@ public final class ItemsAdderContentsSync extends JavaPlugin {
         syncOnStartup();
 
         // Start task
-        startSyncTask();
+        startSyncPackTask();
     }
 
     private void syncOnStartup() {
@@ -77,11 +78,11 @@ public final class ItemsAdderContentsSync extends JavaPlugin {
         }
     }
 
-    private void startSyncTask() {
+    private void startSyncPackTask() {
         if (this.pluginConfiguration.syncRepeatMinutes != -1) {
             long ticks = (long) this.pluginConfiguration.syncRepeatMinutes * 60 * 20;
 
-            this.syncTask = Bukkit.getScheduler().runTaskTimer(this, () -> IASyncManager.syncPack(false), ticks, ticks);
+            this.syncTask = Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> IASyncManager.syncPack(false), ticks, ticks);
         }
     }
 
@@ -98,7 +99,7 @@ public final class ItemsAdderContentsSync extends JavaPlugin {
             syncTask.cancel();
         }
 
-        startSyncTask();
+        startSyncPackTask();
     }
 
     public static ItemsAdderContentsSync instance() {

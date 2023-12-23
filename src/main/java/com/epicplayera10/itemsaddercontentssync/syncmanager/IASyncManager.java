@@ -1,8 +1,8 @@
-package com.epicplayera10.itemsaddercontentssync;
+package com.epicplayera10.itemsaddercontentssync.syncmanager;
 
+import com.epicplayera10.itemsaddercontentssync.ItemsAdderContentsSync;
 import com.epicplayera10.itemsaddercontentssync.configuration.PluginConfiguration;
 import com.epicplayera10.itemsaddercontentssync.utils.FileUtils;
-import com.epicplayera10.itemsaddercontentssync.utils.WinSymlinkFlag;
 import com.epicplayera10.itemsaddercontentssync.utils.WindowsSymlinkUtils;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
@@ -18,7 +18,6 @@ import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.RefAlreadyExistsException;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.FileReader;
@@ -35,38 +34,25 @@ import java.util.logging.Level;
 public class IASyncManager {
     private static final Gson GSON = new GsonBuilder().create();
 
-    private static final Multimap<String, SymlinkOptions> PLUGINS_SYMLINKS = Multimaps.newMultimap(new HashMap<>(), ArrayList::new);
-
-    private static final File LAST_COMMIT_HASH_FILE = new File(ItemsAdderContentsSync.instance().getDataFolder(), "lastcommithash");
+    private static final Multimap<String, PluginDataPath> MODIFIABLE_PLUGINS_PATHS = Multimaps.newMultimap(new HashMap<>(), ArrayList::new);
 
     // Some kind of lock
     private static boolean isSyncing = false;
 
     static {
         // Init PLUGINS_SYMLINKS
-        PLUGINS_SYMLINKS.put("ItemsAdder", new SymlinkOptions("ItemsAdder/contents", true));
-        PLUGINS_SYMLINKS.put("ItemsAdder", new SymlinkOptions("ItemsAdder/storage/custom_fires_ids_cache.yml", false));
-        PLUGINS_SYMLINKS.put("ItemsAdder", new SymlinkOptions("ItemsAdder/storage/font_images_unicode_cache.yml", false));
-        PLUGINS_SYMLINKS.put("ItemsAdder", new SymlinkOptions("ItemsAdder/storage/items_ids_cache.yml", false));
-        PLUGINS_SYMLINKS.put("ItemsAdder", new SymlinkOptions("ItemsAdder/storage/real_blocks_ids_cache.yml", false));
-        PLUGINS_SYMLINKS.put("ItemsAdder", new SymlinkOptions("ItemsAdder/storage/real_blocks_note_ids_cache.yml", false));
-        PLUGINS_SYMLINKS.put("ItemsAdder", new SymlinkOptions("ItemsAdder/storage/real_transparent_blocks_ids_cache.yml", false));
-        PLUGINS_SYMLINKS.put("ItemsAdder", new SymlinkOptions("ItemsAdder/storage/real_wire_ids_cache.yml", false));
+        MODIFIABLE_PLUGINS_PATHS.put("ItemsAdder", new PluginDataPath("ItemsAdder/contents", true));
+        MODIFIABLE_PLUGINS_PATHS.put("ItemsAdder", new PluginDataPath("ItemsAdder/storage/custom_fires_ids_cache.yml", false));
+        MODIFIABLE_PLUGINS_PATHS.put("ItemsAdder", new PluginDataPath("ItemsAdder/storage/font_images_unicode_cache.yml", false));
+        MODIFIABLE_PLUGINS_PATHS.put("ItemsAdder", new PluginDataPath("ItemsAdder/storage/items_ids_cache.yml", false));
+        MODIFIABLE_PLUGINS_PATHS.put("ItemsAdder", new PluginDataPath("ItemsAdder/storage/real_blocks_ids_cache.yml", false));
+        MODIFIABLE_PLUGINS_PATHS.put("ItemsAdder", new PluginDataPath("ItemsAdder/storage/real_blocks_note_ids_cache.yml", false));
+        MODIFIABLE_PLUGINS_PATHS.put("ItemsAdder", new PluginDataPath("ItemsAdder/storage/real_transparent_blocks_ids_cache.yml", false));
+        MODIFIABLE_PLUGINS_PATHS.put("ItemsAdder", new PluginDataPath("ItemsAdder/storage/real_wire_ids_cache.yml", false));
 
-        PLUGINS_SYMLINKS.put("ModelEngine", new SymlinkOptions("ModelEngine/blueprints", true));
+        MODIFIABLE_PLUGINS_PATHS.put("ModelEngine", new PluginDataPath("ModelEngine/blueprints", true));
 
-        PLUGINS_SYMLINKS.put("CosmeticsCore", new SymlinkOptions("CosmeticsCore/cosmetics", true));
-    }
-
-    private static void writeLastCommitHash(String lastCommitHash) throws IOException {
-        Files.writeString(LAST_COMMIT_HASH_FILE.toPath(), lastCommitHash);
-    }
-
-    @Nullable
-    private static String readLastCommitHash() throws IOException {
-        if (!LAST_COMMIT_HASH_FILE.exists()) return null;
-
-        return Files.readAllLines(LAST_COMMIT_HASH_FILE.toPath()).get(0);
+        MODIFIABLE_PLUGINS_PATHS.put("CosmeticsCore", new PluginDataPath("CosmeticsCore/cosmetics", true));
     }
 
     public static CompletableFuture<Boolean> syncPack(boolean force) {
@@ -96,10 +82,18 @@ public class IASyncManager {
 
             try (Git git = initRepo(repoDir)) {
 
+                // Get current commit hash on local repo
+                String lastCommitHash = git.log()
+                        .setMaxCount(1)
+                        .call()
+                        .iterator()
+                        .next()
+                        .getName();
+
                 // Pull changes
                 git.pull().call();
 
-                // Check if changes where made in this repo
+                // Get the latest commit hash from remote repo
                 String latestCommitHash = git.log()
                         .setMaxCount(1)
                         .call()
@@ -107,7 +101,7 @@ public class IASyncManager {
                         .next()
                         .getName();
 
-                if (!force && latestCommitHash.equals(readLastCommitHash())) {
+                if (!force && latestCommitHash.equals(lastCommitHash)) {
                     return false;
                 }
 
@@ -138,37 +132,16 @@ public class IASyncManager {
         // Start updating
         JsonObject root = JsonParser.parseReader(new FileReader(new File(repoDir, "config.json"))).getAsJsonObject();
 
-        File packDir = new File(repoDir, "pack");
-
-        createSymlinks(packDir);
-
-        // Delete files
-        /*ItemsAdderContentsSync.instance().getLogger().info("Deleting files...");
-        for (var entry : PLUGINS_TO_DELETE_FILES.asMap().entrySet()) {
-            String pluginName = entry.getKey();
-            Collection<String> pathsToDelete = entry.getValue();
-
-            // Check if plugin config exists
-            File pluginFolder = new File(packDir, pluginName);
-            if (pluginFolder.isDirectory()) {
-                for (String pathToDelete : pathsToDelete) {
-                    File file = new File(ItemsAdderContentsSync.instance().getDataFolder().getParentFile(), pathToDelete);
-
-                    if (!file.exists()) continue;
-
-                    ItemsAdderContentsSync.instance().getLogger().info("Deleting file: " + pathToDelete);
-
-                    FileUtils.deleteRecursion(file);
-                }
-            }
-        }*/
-
         // Handle config
         handleConfig(root);
 
-        // Copy new files
-        //ItemsAdderContentsSync.instance().getLogger().info("Copying new files");
-        //FileUtils.copyFileStructure(packDir, ItemsAdderContentsSync.instance().getDataFolder().getParentFile());
+        File packDir = new File(repoDir, "pack");
+
+        if (ItemsAdderContentsSync.instance().getPluginConfiguration().putContentMode == PutContentMode.SYMLINKS) {
+            createSymlinks(packDir);
+        } else if (ItemsAdderContentsSync.instance().getPluginConfiguration().putContentMode == PutContentMode.REPLACE_FILES) {
+            replaceFilesInDestinations(packDir);
+        }
 
         // We don't need to reload plugins before they started
         if (!isServerStartup) {
@@ -176,22 +149,22 @@ public class IASyncManager {
             reloadPlugins(packDir);
         }
 
-        // Store latest commit hash
-        writeLastCommitHash(latestCommitHash);
-
         ItemsAdderContentsSync.instance().getLogger().info("Done");
     }
 
+    /**
+     * Creates symlinks in proper places
+     */
     private static void createSymlinks(File packDir) throws IOException {
         File pluginsDir = ItemsAdderContentsSync.instance().getDataFolder().getParentFile();
 
-        for (var entry : PLUGINS_SYMLINKS.asMap().entrySet()) {
+        for (var entry : MODIFIABLE_PLUGINS_PATHS.asMap().entrySet()) {
             String pluginName = entry.getKey();
-            Collection<SymlinkOptions> symlinkOptionsList = entry.getValue();
+            Collection<PluginDataPath> pluginDataPathList = entry.getValue();
 
             if (new File(packDir, pluginName).isDirectory()) {
-                for (SymlinkOptions symlinkOptions : symlinkOptionsList) {
-                    File linkPath = new File(pluginsDir, symlinkOptions.path);
+                for (PluginDataPath pluginDataPath : pluginDataPathList) {
+                    File linkPath = new File(pluginsDir, pluginDataPath.path);
 
                     if (linkPath.exists()) {
                         if (isSymlink(linkPath)) {
@@ -204,9 +177,9 @@ public class IASyncManager {
 
                     linkPath.getParentFile().mkdirs();
 
-                    File targetPath = new File(packDir, symlinkOptions.path);
+                    File targetPath = new File(packDir, pluginDataPath.path);
                     // Create symlink
-                    if (symlinkOptions.isDirectory && System.getProperty("os.name").startsWith("Windows")) {
+                    if (pluginDataPath.isDirectory && System.getProperty("os.name").startsWith("Windows")) {
                         // Windows has its own way of directory symlinks
                         WindowsSymlinkUtils.createJunctionSymlink(linkPath, targetPath);
                     } else {
@@ -226,6 +199,36 @@ public class IASyncManager {
             boolean isWindows = System.getProperty("os.name").toLowerCase().contains("windows");
             return isWindows && attrs.isDirectory() && attrs.isOther();
         }
+    }
+
+    /**
+     * Replaces files (copying) in the according destinations
+     */
+    private static void replaceFilesInDestinations(File packDir) throws IOException {
+        // Delete files
+        ItemsAdderContentsSync.instance().getLogger().info("Deleting files...");
+        for (var entry : MODIFIABLE_PLUGINS_PATHS.asMap().entrySet()) {
+            String pluginName = entry.getKey();
+            Collection<PluginDataPath> pluginDataPathList = entry.getValue();
+
+            // Check if plugin config exists
+            File pluginFolder = new File(packDir, pluginName);
+            if (pluginFolder.isDirectory()) {
+                for (PluginDataPath pluginDataPath : pluginDataPathList) {
+                    File file = new File(ItemsAdderContentsSync.instance().getDataFolder().getParentFile(), pluginDataPath.path);
+
+                    if (!file.exists()) continue;
+
+                    ItemsAdderContentsSync.instance().getLogger().info("Deleting file: " + pluginDataPath.path);
+
+                    FileUtils.deleteRecursion(file);
+                }
+            }
+        }
+
+        // Copy new files
+        ItemsAdderContentsSync.instance().getLogger().info("Copying new files");
+        FileUtils.copyFileStructure(packDir, ItemsAdderContentsSync.instance().getDataFolder().getParentFile());
     }
 
     /**
@@ -404,6 +407,6 @@ public class IASyncManager {
         return isSyncing;
     }
 
-    private record SymlinkOptions(String path, boolean isDirectory) {
+    private record PluginDataPath(String path, boolean isDirectory) {
     }
 }
