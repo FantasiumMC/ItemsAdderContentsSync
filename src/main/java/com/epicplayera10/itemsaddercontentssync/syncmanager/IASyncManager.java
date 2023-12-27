@@ -18,6 +18,7 @@ import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.RefAlreadyExistsException;
+import org.eclipse.jgit.lib.StoredConfig;
 
 import java.io.File;
 import java.io.FileReader;
@@ -339,6 +340,12 @@ public class IASyncManager {
                     .setBranch(pluginConfiguration.branch)
                     .setDirectory(repoDir)
                     .call();
+
+            StoredConfig gitConfig = git.getRepository().getConfig();
+            gitConfig.setString("user", null, "name", "MC Server");
+            gitConfig.setString("user", null, "email", "minecraft@server.null");
+            gitConfig.setBoolean("core", null, "fileMode", false);
+            gitConfig.save();
 
             ItemsAdderContentsSync.instance().getLogger().info("Cloned repo!");
         } else {
