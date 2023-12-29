@@ -81,33 +81,46 @@ public class IASyncManager {
         return CompletableFuture.supplyAsync(() -> {
             File repoDir = ItemsAdderContentsSync.instance().getRepoDir();
 
+            boolean isFreshClone = shouldCloneRepo(repoDir);
+
             try (Git git = initRepo(repoDir)) {
-
-                // Get current commit hash on local repo
-                String lastCommitHash = git.log()
+                if (!isFreshClone) {
+                    // Get current commit hash on local repo
+                    String lastCommitHash = git.log()
                         .setMaxCount(1)
                         .call()
                         .iterator()
                         .next()
                         .getName();
 
-                // Pull changes
-                git.pull().call();
+                    // Pull changes
+                    git.pull().call();
 
-                // Get the latest commit hash from remote repo
-                String latestCommitHash = git.log()
+                    // Get the latest commit hash from remote repo
+                    String latestCommitHash = git.log()
                         .setMaxCount(1)
                         .call()
                         .iterator()
                         .next()
                         .getName();
 
-                if (!force && latestCommitHash.equals(lastCommitHash)) {
-                    return false;
+                    if (!force && latestCommitHash.equals(lastCommitHash)) {
+                        // Using already the latest version
+
+                        if (ItemsAdderContentsSync.instance().getPluginConfiguration().putContentMode == PutContentMode.SYMLINKS) {
+                            // Make sure that symlinks exists
+                            createSymlinks(new File(repoDir, "pack"));
+                        }
+                        return false;
+                    }
+
+                    ItemsAdderContentsSync.instance().getLogger().log(Level.INFO, "Found newer version of the pack (" + latestCommitHash + ")! Updating...");
+                } else {
+                    ItemsAdderContentsSync.instance().getLogger().log(Level.INFO, "Installing fresh pack on the server...");
                 }
 
                 // Update pack
-                updatePack(repoDir, latestCommitHash, isServerStartup);
+                updatePack(repoDir, isServerStartup);
 
                 return true;
             } catch (GitAPIException | IOException e) {
@@ -125,11 +138,8 @@ public class IASyncManager {
      * Updates pack
      *
      * @param repoDir Repository Directory
-     * @param latestCommitHash Latest commit hash in this repository
      */
-    private static void updatePack(File repoDir, String latestCommitHash, boolean isServerStartup) throws IOException {
-        ItemsAdderContentsSync.instance().getLogger().log(Level.INFO, "Found newer version of the pack (" + latestCommitHash + ")! Updating...");
-
+    private static void updatePack(File repoDir, boolean isServerStartup) throws IOException {
         // Start updating
         JsonObject root = JsonParser.parseReader(new FileReader(new File(repoDir, "config.json"))).getAsJsonObject();
 
@@ -330,7 +340,7 @@ public class IASyncManager {
 
         Git git;
 
-        if (!repoDir.exists() || !repoDir.isDirectory() || !new File(repoDir, ".git").exists()) {
+        if (shouldCloneRepo(repoDir)) {
             // Clone repo
             ItemsAdderContentsSync.instance().getLogger().info("Cloning repo...");
             FileUtils.deleteRecursion(repoDir);
@@ -365,6 +375,10 @@ public class IASyncManager {
         }
 
         return git;
+    }
+
+    private static boolean shouldCloneRepo(File repoDir) {
+        return !repoDir.exists() || !repoDir.isDirectory() || !new File(repoDir, ".git").exists();
     }
 
     /**
