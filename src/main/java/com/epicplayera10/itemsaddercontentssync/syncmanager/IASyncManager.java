@@ -177,6 +177,9 @@ public class IASyncManager {
 
             if (new File(packDir, pluginName).isDirectory()) {
                 for (PluginDataPath pluginDataPath : pluginDataPathList) {
+                    File targetPath = new File(packDir, pluginDataPath.path);
+                    if (!targetPath.exists()) continue;
+
                     File linkPath = new File(pluginsDir, pluginDataPath.path);
 
                     if (linkPath.exists()) {
@@ -190,7 +193,6 @@ public class IASyncManager {
 
                     linkPath.getParentFile().mkdirs();
 
-                    File targetPath = new File(packDir, pluginDataPath.path);
                     // Create symlink
                     if (pluginDataPath.isDirectory && System.getProperty("os.name").startsWith("Windows")) {
                         // Windows has its own way of directory symlinks
