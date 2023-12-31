@@ -52,6 +52,8 @@ public class IASyncManager {
         MODIFIABLE_PLUGINS_PATHS.put("ItemsAdder", new PluginDataPath("ItemsAdder/storage/real_wire_ids_cache.yml", false));
 
         MODIFIABLE_PLUGINS_PATHS.put("ModelEngine", new PluginDataPath("ModelEngine/blueprints", true));
+        // New feature in ModelEngine R4.0.0
+        MODIFIABLE_PLUGINS_PATHS.put("ModelEngine", new PluginDataPath("ModelEngine/.data/cache.json", false));
 
         MODIFIABLE_PLUGINS_PATHS.put("CosmeticsCore", new PluginDataPath("CosmeticsCore/cosmetics", true));
     }
