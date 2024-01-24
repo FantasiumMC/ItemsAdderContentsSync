@@ -5,4 +5,9 @@ api-version: 1.19
 authors: [EpicPlayerA10]
 website: https://fanthstudios.pl
 
-loadbefore: [ItemsAdder, ModelEngine, CosmeticsCore]
+loadbefore:
+  - ItemsAdder
+  - ModelEngine
+  - CosmeticsCore
+  - MythicMobs
+  - MCPets

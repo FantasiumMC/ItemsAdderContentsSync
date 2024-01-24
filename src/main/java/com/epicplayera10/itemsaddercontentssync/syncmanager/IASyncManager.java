@@ -12,7 +12,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.bukkit.Bukkit;
-import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
@@ -41,7 +40,8 @@ public class IASyncManager {
     private static boolean isSyncing = false;
 
     static {
-        // Init PLUGINS_SYMLINKS
+        // Init MODIFIABLE_PLUGINS_PATHS
+
         MODIFIABLE_PLUGINS_PATHS.put("ItemsAdder", new PluginDataPath("ItemsAdder/contents", true));
         MODIFIABLE_PLUGINS_PATHS.put("ItemsAdder", new PluginDataPath("ItemsAdder/storage/custom_fires_ids_cache.yml", false));
         MODIFIABLE_PLUGINS_PATHS.put("ItemsAdder", new PluginDataPath("ItemsAdder/storage/font_images_unicode_cache.yml", false));
@@ -56,6 +56,10 @@ public class IASyncManager {
         MODIFIABLE_PLUGINS_PATHS.put("ModelEngine", new PluginDataPath("ModelEngine/.data/cache.json", false));
 
         MODIFIABLE_PLUGINS_PATHS.put("CosmeticsCore", new PluginDataPath("CosmeticsCore/cosmetics", true));
+
+        MODIFIABLE_PLUGINS_PATHS.put("MythicMobs", new PluginDataPath("MythicMobs/Packs", true));
+
+        MODIFIABLE_PLUGINS_PATHS.put("MCPets", new PluginDataPath("MCPets/Pets", true));
     }
 
     public static CompletableFuture<Boolean> syncPack(boolean force) {
@@ -257,80 +261,50 @@ public class IASyncManager {
         // Beautiful futures chain :D
 
         // Pre reloads
+        future = preReloadPlugins(packDir, future);
+
+        // Reload ItemsAdder
+        if (shouldBePluginReloaded(packDir, "ItemsAdder")) {
+            ItemsAdderContentsSync.instance().getThirdPartyPluginStates().itemsAdderReloadingFuture = new CompletableFuture<>();
+
+            future = future.thenCompose((unused) -> ReloadPlugins.reloadItemsAdder());
+        }
+
+        // Post reloads
+        future = postReloadPlugins(packDir, future);
+    }
+
+    private static CompletableFuture<Void> preReloadPlugins(File packDir, CompletableFuture<Void> future) {
         // Reload ModelEngine
         if (shouldBePluginReloaded(packDir, "ModelEngine")) {
             ItemsAdderContentsSync.instance().getThirdPartyPluginStates().modelEngineReloadingFuture = new CompletableFuture<>();
 
-            future = future.thenCompose((unused) -> {
-                reloadModelEngine();
-
-                return ItemsAdderContentsSync.instance().getThirdPartyPluginStates().modelEngineReloadingFuture;
-            });
+            future = future.thenCompose((unused) -> ReloadPlugins.reloadModelEngine());
         }
 
-        // Reload ItemsAdder
-        if (new File(packDir, "ItemsAdder").exists()) {
-            ItemsAdderContentsSync.instance().getThirdPartyPluginStates().itemsAdderReloadingFuture = new CompletableFuture<>();
+        return future;
+    }
 
-            future = future.thenCompose((unused) -> {
-                reloadItemsAdder();
-
-                return ItemsAdderContentsSync.instance().getThirdPartyPluginStates().itemsAdderReloadingFuture;
-            });
-        }
-
-        // Post reloads
+    private static CompletableFuture<Void> postReloadPlugins(File packDir, CompletableFuture<Void> future) {
         // Reload CosmeticsCore
         if (shouldBePluginReloaded(packDir, "CosmeticsCore")) {
-            future.thenAccept((unused) -> {
-                reloadCosmeticsCore();
-            });
+            future = future.thenRun(ReloadPlugins::reloadCosmeticsCore);
         }
+        // Reload MythicMobs
+        if (shouldBePluginReloaded(packDir, "MythicMobs")) {
+            future = future.thenRun(ReloadPlugins::reloadMythicMobs);
+        }
+        // Reload MCPets
+        if (shouldBePluginReloaded(packDir, "MCPets")) {
+            future = future.thenRun(ReloadPlugins::reloadMCPets);
+        }
+
+        return future;
     }
 
     private static boolean shouldBePluginReloaded(File packDir, String pluginName) {
-        return new File(packDir, pluginName).exists() && Bukkit.getPluginManager().isPluginEnabled(pluginName);
-    }
-
-    /**
-     * Reloads CosmeticsCore
-     */
-    private static void reloadCosmeticsCore() {
-        ItemsAdderContentsSync.instance().getLogger().info("Reloading CosmeticsCore");
-        runCommandEnsureSync(Bukkit.getConsoleSender(), "cosmeticsconfig cosmetics reload");
-    }
-
-    /**
-     * Reloads ModelEngine
-     */
-    private static void reloadModelEngine() {
-        ItemsAdderContentsSync.instance().getLogger().info("Reloading ModelEngine");
-
-        runCommandEnsureSync(Bukkit.getConsoleSender(), "meg reload");
-    }
-
-    /**
-     * Reloads ItemsAdder
-     */
-    private static void reloadItemsAdder() {
-        ItemsAdderContentsSync.instance().getLogger().info("Reloading ItemsAdder");
-
-        runCommandEnsureSync(Bukkit.getConsoleSender(), "iareload");
-        /*if (ItemsAdderContentsSync.instance().canItemsAdderCreateResourcepack()) {
-            runCommandEnsureSync(Bukkit.getConsoleSender(), "iazip");
-        } else {
-            runCommandEnsureSync(Bukkit.getConsoleSender(), "iareload");
-        }*/
-    }
-
-    private static void runCommandEnsureSync(CommandSender sender, String command) {
-        if (Bukkit.isPrimaryThread()) {
-            Bukkit.dispatchCommand(sender, command);
-        } else {
-            Bukkit.getScheduler().runTask(ItemsAdderContentsSync.instance(), () -> {
-                Bukkit.dispatchCommand(sender, command);
-            });
-        }
+        return new File(packDir, pluginName).exists() // Is the plugin in the pack?
+                && Bukkit.getPluginManager().isPluginEnabled(pluginName);
     }
 
     /**
