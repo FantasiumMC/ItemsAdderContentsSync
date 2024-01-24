@@ -10,7 +10,7 @@ public class ThirdPartyPluginStates {
     public CompletableFuture<Void> modelEngineReloadingFuture = new CompletableFuture<>();
 
     public ThirdPartyPluginStates() {
-        if (!Bukkit.getPluginManager().isPluginEnabled("ModelEngine")) {
+        if (Bukkit.getPluginManager().getPlugin("ModelEngine") == null) {
             modelEngineReloadingFuture.complete(null);
         }
     }

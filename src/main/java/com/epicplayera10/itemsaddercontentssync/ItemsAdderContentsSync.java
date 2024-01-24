@@ -48,7 +48,7 @@ public final class ItemsAdderContentsSync extends JavaPlugin {
 
         Bukkit.getPluginManager().registerEvents(new ItemsAdderListener(), this);
 
-        if (Bukkit.getPluginManager().isPluginEnabled("ModelEngine")) {
+        if (Bukkit.getPluginManager().getPlugin("ModelEngine") != null) {
             Bukkit.getPluginManager().registerEvents(new ModelEngineListener(), this);
         }
 

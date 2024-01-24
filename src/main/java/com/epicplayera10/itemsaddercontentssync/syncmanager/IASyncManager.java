@@ -305,7 +305,7 @@ public class IASyncManager {
 
     private static boolean isPluginInUse(File packDir, String pluginName) {
         return new File(packDir, pluginName).exists() // Is the plugin in the pack?
-                && Bukkit.getPluginManager().isPluginEnabled(pluginName);
+                && Bukkit.getPluginManager().getPlugin(pluginName) != null;
     }
 
     /**
