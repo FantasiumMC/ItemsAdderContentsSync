@@ -291,7 +291,9 @@ public class IASyncManager {
             future = future.thenRun(ReloadPlugins::reloadCosmeticsCore);
         }
         // Reload MythicMobs
-        if (shouldBePluginReloaded(packDir, "MythicMobs")) {
+        if (shouldBePluginReloaded(packDir, "MythicMobs")
+            && !shouldBePluginReloaded(packDir, "ItemsAdder") // ItemsAdder automatically reloads MythicMobs on /iareload
+        ) {
             future = future.thenRun(ReloadPlugins::reloadMythicMobs);
         }
         // Reload MCPets
