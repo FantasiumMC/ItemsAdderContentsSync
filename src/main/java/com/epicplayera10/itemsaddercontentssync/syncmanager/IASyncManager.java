@@ -179,7 +179,7 @@ public class IASyncManager {
             String pluginName = entry.getKey();
             Collection<PluginDataPath> pluginDataPathList = entry.getValue();
 
-            if (new File(packDir, pluginName).isDirectory()) {
+            if (isPluginInUse(packDir, pluginName)) {
                 for (PluginDataPath pluginDataPath : pluginDataPathList) {
                     File targetPath = new File(packDir, pluginDataPath.path);
                     if (!targetPath.exists()) continue;
@@ -231,8 +231,7 @@ public class IASyncManager {
             Collection<PluginDataPath> pluginDataPathList = entry.getValue();
 
             // Check if plugin config exists
-            File pluginFolder = new File(packDir, pluginName);
-            if (pluginFolder.isDirectory()) {
+            if (isPluginInUse(packDir, pluginName)) {
                 for (PluginDataPath pluginDataPath : pluginDataPathList) {
                     File file = new File(ItemsAdderContentsSync.instance().getDataFolder().getParentFile(), pluginDataPath.path);
 
@@ -264,7 +263,7 @@ public class IASyncManager {
         future = preReloadPlugins(packDir, future);
 
         // Reload ItemsAdder
-        if (shouldBePluginReloaded(packDir, "ItemsAdder")) {
+        if (isPluginInUse(packDir, "ItemsAdder")) {
             ItemsAdderContentsSync.instance().getThirdPartyPluginStates().itemsAdderReloadingFuture = new CompletableFuture<>();
 
             future = future.thenCompose((unused) -> ReloadPlugins.reloadItemsAdder());
@@ -276,7 +275,7 @@ public class IASyncManager {
 
     private static CompletableFuture<Void> preReloadPlugins(File packDir, CompletableFuture<Void> future) {
         // Reload ModelEngine
-        if (shouldBePluginReloaded(packDir, "ModelEngine")) {
+        if (isPluginInUse(packDir, "ModelEngine")) {
             ItemsAdderContentsSync.instance().getThirdPartyPluginStates().modelEngineReloadingFuture = new CompletableFuture<>();
 
             future = future.thenCompose((unused) -> ReloadPlugins.reloadModelEngine());
@@ -287,24 +286,24 @@ public class IASyncManager {
 
     private static CompletableFuture<Void> postReloadPlugins(File packDir, CompletableFuture<Void> future) {
         // Reload CosmeticsCore
-        if (shouldBePluginReloaded(packDir, "CosmeticsCore")) {
+        if (isPluginInUse(packDir, "CosmeticsCore")) {
             future = future.thenRun(ReloadPlugins::reloadCosmeticsCore);
         }
         // Reload MythicMobs
-        if (shouldBePluginReloaded(packDir, "MythicMobs")
-            && !shouldBePluginReloaded(packDir, "ItemsAdder") // ItemsAdder automatically reloads MythicMobs on /iareload
+        if (isPluginInUse(packDir, "MythicMobs")
+            && !isPluginInUse(packDir, "ItemsAdder") // ItemsAdder automatically reloads MythicMobs on /iareload
         ) {
             future = future.thenRun(ReloadPlugins::reloadMythicMobs);
         }
         // Reload MCPets
-        if (shouldBePluginReloaded(packDir, "MCPets")) {
+        if (isPluginInUse(packDir, "MCPets")) {
             future = future.thenRun(ReloadPlugins::reloadMCPets);
         }
 
         return future;
     }
 
-    private static boolean shouldBePluginReloaded(File packDir, String pluginName) {
+    private static boolean isPluginInUse(File packDir, String pluginName) {
         return new File(packDir, pluginName).exists() // Is the plugin in the pack?
                 && Bukkit.getPluginManager().isPluginEnabled(pluginName);
     }
