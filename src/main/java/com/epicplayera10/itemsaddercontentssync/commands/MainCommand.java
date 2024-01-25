@@ -31,9 +31,11 @@ public class MainCommand extends BaseCommand {
     @Syntax("[force]")
     public void sync(CommandSender sender, @Default("false") boolean force) {
         if (IASyncManager.isSyncing()) {
-            sender.sendMessage("Już trwa proces synchronizacji!");
+            sender.sendMessage(Component.text("Już trwa proces synchronizacji!").color(NamedTextColor.RED));
             return;
         }
+
+        sender.sendMessage(Component.text("Synchronizowanie...").color(NamedTextColor.GREEN));
 
         IASyncManager.syncPack(force).whenComplete((wasNewerVersion, ex) -> {
             if (ex == null) {
