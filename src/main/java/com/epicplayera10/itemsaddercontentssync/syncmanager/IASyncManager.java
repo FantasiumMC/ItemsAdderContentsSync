@@ -89,7 +89,7 @@ public class IASyncManager {
 
             boolean isFreshClone = shouldCloneRepo(repoDir);
 
-            try (Git git = initRepo(repoDir)) {
+            try (Git git = getOrInitGit()) {
                 if (!isFreshClone) {
                     // Get current commit hash on local repo
                     String lastCommitHash = git.log()
@@ -311,10 +311,11 @@ public class IASyncManager {
     /**
      * Clones repo if does not exists or just open existing repo.
      *
-     * @param repoDir Repo Directory
      * @return {@link Git} reference
      */
-    private static Git initRepo(File repoDir) throws IOException, GitAPIException {
+    public static Git getOrInitGit() throws IOException, GitAPIException {
+        File repoDir = ItemsAdderContentsSync.instance().getRepoDir();
+
         PluginConfiguration pluginConfiguration = ItemsAdderContentsSync.instance().getPluginConfiguration();
 
         Git git;
@@ -331,9 +332,12 @@ public class IASyncManager {
                     .call();
 
             StoredConfig gitConfig = git.getRepository().getConfig();
+
             gitConfig.setString("user", null, "name", "MC Server");
             gitConfig.setString("user", null, "email", "minecraft@server.null");
             gitConfig.setBoolean("core", null, "fileMode", false);
+            gitConfig.setString("credential", null, "helper", "store");
+
             gitConfig.save();
 
             ItemsAdderContentsSync.instance().getLogger().info("Cloned repo!");

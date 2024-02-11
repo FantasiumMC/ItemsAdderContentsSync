@@ -13,8 +13,15 @@ import com.epicplayera10.itemsaddercontentssync.syncmanager.IASyncManager;
 import com.epicplayera10.itemsaddercontentssync.ItemsAdderContentsSync;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.ResetCommand;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.lib.Ref;
 
+import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 
 @CommandAlias("iacs|itemsaddercontentssync")
@@ -56,5 +63,31 @@ public class MainCommand extends BaseCommand {
     public void reload(CommandSender sender) {
         ItemsAdderContentsSync.instance().reload();
         sender.sendMessage(Component.text("Przeładowano!").color(NamedTextColor.GREEN));
+    }
+
+    @Subcommand("resethead")
+    @Description("Resetuje repozytorium do HEADa (git reset --hard HEAD)")
+    public void resetHead(CommandSender sender) {
+        sender.sendMessage(Component.text("Resetuje repozytorium do HEADa...").color(NamedTextColor.GREEN));
+
+        Bukkit.getScheduler().runTaskAsynchronously(ItemsAdderContentsSync.instance(), () -> {
+            try (Git git = IASyncManager.getOrInitGit()) {
+
+                // Delete untracked files too
+                git.clean()
+                    .setForce(true)
+                    .setCleanDirectories(true)
+                    .call();
+
+                git.reset()
+                    .setMode(ResetCommand.ResetType.HARD)
+                    .setRef("HEAD");
+
+                sender.sendMessage(Component.text("Pomyślnie zresetowano repozytorium do HEADa!").color(NamedTextColor.GREEN));
+            } catch (GitAPIException | IOException e) {
+                sender.sendMessage(Component.text("Wystąpił błąd! Po więcej informacji zobacz konsolę").color(NamedTextColor.RED));
+                throw new RuntimeException(e);
+            }
+        });
     }
 }
