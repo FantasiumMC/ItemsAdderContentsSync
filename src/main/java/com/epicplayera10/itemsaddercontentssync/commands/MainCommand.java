@@ -81,7 +81,8 @@ public class MainCommand extends BaseCommand {
 
                 git.reset()
                     .setMode(ResetCommand.ResetType.HARD)
-                    .setRef("HEAD");
+                    .setRef("HEAD")
+                    .call();
 
                 sender.sendMessage(Component.text("Pomyślnie zresetowano repozytorium do HEADa!").color(NamedTextColor.GREEN));
             } catch (GitAPIException | IOException e) {
