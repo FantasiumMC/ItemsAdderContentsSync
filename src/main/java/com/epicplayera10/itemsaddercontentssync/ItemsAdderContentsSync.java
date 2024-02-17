@@ -17,6 +17,7 @@ import org.bukkit.scheduler.BukkitTask;
 import org.eclipse.jgit.transport.CredentialsProvider;
 
 import java.io.File;
+import java.util.logging.Level;
 
 public final class ItemsAdderContentsSync extends JavaPlugin {
 
@@ -59,8 +60,12 @@ public final class ItemsAdderContentsSync extends JavaPlugin {
 
         manager.registerCommand(new MainCommand());
 
-        // Sync on startup
-        syncOnStartup();
+        try {
+            // Sync on startup
+            syncOnStartup();
+        } catch (Exception ex) {
+            this.getLogger().log(Level.SEVERE, "An error occurred while syncing pack on startup!", ex);
+        }
 
         // Start task
         startSyncPackTask();
