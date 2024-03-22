@@ -9,7 +9,6 @@ import co.aikar.commands.annotation.Description;
 import co.aikar.commands.annotation.HelpCommand;
 import co.aikar.commands.annotation.Subcommand;
 import co.aikar.commands.annotation.Syntax;
-import com.epicplayera10.itemsaddercontentssync.syncmanager.IASyncManager;
 import com.epicplayera10.itemsaddercontentssync.ItemsAdderContentsSync;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -18,10 +17,8 @@ import org.bukkit.command.CommandSender;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.lib.Ref;
 
 import java.io.IOException;
-import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 
 @CommandAlias("iacs|itemsaddercontentssync")
@@ -37,14 +34,14 @@ public class MainCommand extends BaseCommand {
     @Description("Synchronizuje paczkę")
     @Syntax("[force]")
     public void sync(CommandSender sender, @Default("false") boolean force) {
-        if (IASyncManager.isSyncing()) {
+        if (ItemsAdderContentsSync.instance().getPack().isSyncing()) {
             sender.sendMessage(Component.text("Już trwa proces synchronizacji!").color(NamedTextColor.RED));
             return;
         }
 
         sender.sendMessage(Component.text("Synchronizowanie...").color(NamedTextColor.GREEN));
 
-        IASyncManager.syncPack(force).whenComplete((wasNewerVersion, ex) -> {
+        ItemsAdderContentsSync.instance().getPack().syncPack(force, sender).whenComplete((wasNewerVersion, ex) -> {
             if (ex == null) {
                 if (wasNewerVersion) {
                     sender.sendMessage(Component.text("Pomyślnie zsynchronizowano!").color(NamedTextColor.GREEN));
@@ -71,7 +68,7 @@ public class MainCommand extends BaseCommand {
         sender.sendMessage(Component.text("Resetuje repozytorium do HEADa...").color(NamedTextColor.GREEN));
 
         Bukkit.getScheduler().runTaskAsynchronously(ItemsAdderContentsSync.instance(), () -> {
-            try (Git git = IASyncManager.getOrInitGit()) {
+            try (Git git = ItemsAdderContentsSync.instance().getPack().getOrInitGit()) {
 
                 // Delete untracked files too
                 git.clean()

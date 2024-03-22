@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 
 public class FileUtils {
@@ -42,5 +43,16 @@ public class FileUtils {
             }
         }
         Files.delete(file.toPath());
+    }
+
+    public static boolean isSymlink(File file) throws IOException {
+        BasicFileAttributes attrs = Files.readAttributes(file.toPath(), BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+
+        if (attrs.isSymbolicLink()) {
+            return true;
+        } else {
+            boolean isWindows = System.getProperty("os.name").toLowerCase().contains("windows");
+            return isWindows && attrs.isDirectory() && attrs.isOther();
+        }
     }
 }
