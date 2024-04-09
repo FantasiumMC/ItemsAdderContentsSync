@@ -13,11 +13,11 @@ public class ReloadPlugins {
     public static final List<ReloadPluginProperties> PLUGINS_RELOAD_ORDER = List.of(
         // Pre-reload
         new ReloadPluginProperties("ModelEngine", "meg reload")
-            .withCustomReloadFuture(ItemsAdderContentsSync.instance().getThirdPartyPluginStates().modelEngineReloadingFuture),
+            .withCustomReloadFuture(() -> ItemsAdderContentsSync.instance().getThirdPartyPluginStates().modelEngineReloadingFuture),
 
         // Reload ItemsAdder
         new ReloadPluginProperties("ItemsAdder", "iareload")
-            .withCustomReloadFuture(ItemsAdderContentsSync.instance().getThirdPartyPluginStates().itemsAdderReloadingFuture),
+            .withCustomReloadFuture(() -> ItemsAdderContentsSync.instance().getThirdPartyPluginStates().itemsAdderReloadingFuture),
 
         // Post-reload
         new ReloadPluginProperties("CosmeticsCore", "cosmeticsconfig cosmetics reload")
@@ -52,8 +52,8 @@ public class ReloadPlugins {
         return future.thenCompose((unused) -> {
             runCommandEnsureSync(Bukkit.getConsoleSender(), reloadPluginProperties.reloadCommand());
 
-            if (reloadPluginProperties.customReloadFuture() != null) {
-                return reloadPluginProperties.customReloadFuture();
+            if (reloadPluginProperties.customReloadFutureSupplier() != null) {
+                return reloadPluginProperties.customReloadFutureSupplier().get();
             } else {
                 return CompletableFuture.completedFuture(null);
             }
