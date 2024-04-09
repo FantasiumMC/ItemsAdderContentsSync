@@ -50,8 +50,8 @@ public class ReloadPlugins {
         }
 
         return future.thenCompose((unused) -> {
-            runCommandEnsureSync(Bukkit.getConsoleSender(), reloadPluginProperties.reloadCommand());
-
+            return runCommandEnsureSync(Bukkit.getConsoleSender(), reloadPluginProperties.reloadCommand());
+        }).thenCompose((unused) -> {
             if (reloadPluginProperties.customReloadFutureSupplier() != null) {
                 return reloadPluginProperties.customReloadFutureSupplier().get();
             } else {
@@ -60,13 +60,18 @@ public class ReloadPlugins {
         });
     }
 
-    private static void runCommandEnsureSync(CommandSender sender, String command) {
+    private static CompletableFuture<Void> runCommandEnsureSync(CommandSender sender, String command) {
         if (Bukkit.isPrimaryThread()) {
             Bukkit.dispatchCommand(sender, command);
+            return CompletableFuture.completedFuture(null);
         } else {
+            CompletableFuture<Void> future = new CompletableFuture<>();
             Bukkit.getScheduler().runTask(ItemsAdderContentsSync.instance(), () -> {
                 Bukkit.dispatchCommand(sender, command);
+                future.complete(null);
             });
+
+            return future;
         }
     }
 }
