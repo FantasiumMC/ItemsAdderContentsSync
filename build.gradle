@@ -25,7 +25,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly "io.papermc.paper:paper-api:1.20.2-R0.1-SNAPSHOT"
+    compileOnly "io.papermc.paper:paper-api:1.20.6-R0.1-SNAPSHOT"
 
     compileOnly 'com.github.LoneDev6:API-ItemsAdder:3.6.2-beta-r3-b'
     compileOnly "com.ticxo.modelengine:ModelEngine:R4.0.4"
