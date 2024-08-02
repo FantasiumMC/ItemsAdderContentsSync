@@ -31,7 +31,7 @@ dependencies {
     compileOnly "com.ticxo.modelengine:ModelEngine:R4.0.4"
     //compileOnly "com.ticxo.modelengine:api:R3.1.9"
 
-    implementation 'eu.okaeri:okaeri-configs-yaml-snakeyaml:5.0.0-beta.5'
+    implementation 'eu.okaeri:okaeri-configs-yaml-snakeyaml:5.0.2'
     implementation 'eu.okaeri:okaeri-configs-yaml-bukkit:5.0.0-beta.5'
     implementation 'eu.okaeri:okaeri-configs-validator-okaeri:5.0.0-beta.5'
     implementation 'eu.okaeri:okaeri-configs-serdes-commons:5.0.0-beta.5'
