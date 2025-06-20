@@ -27,7 +27,7 @@ public class Pack {
     @Nullable
     public final UsernamePasswordCredentialsProvider credentials;
 
-    public Pack(File repoDir, String packRepoUrl, String branch, UsernamePasswordCredentialsProvider credentials) {
+    public Pack(File repoDir, String packRepoUrl, String branch, @Nullable UsernamePasswordCredentialsProvider credentials) {
         this.repoDir = repoDir;
         this.packDir = new File(repoDir, "pack");
 

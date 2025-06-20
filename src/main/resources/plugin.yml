@@ -3,7 +3,7 @@ version: '${version}'
 main: com.epicplayera10.itemsaddercontentssync.ItemsAdderContentsSync
 api-version: 1.19
 authors: [EpicPlayerA10]
-website: https://studios.fanth.pl
+website: https://fanth.pl
 
 loadbefore:
   - ItemsAdder

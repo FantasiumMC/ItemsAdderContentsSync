@@ -176,28 +176,28 @@ public class SyncPackOperation {
 
             if (isPluginInUse(pluginName)) {
                 for (PluginDataPath pluginDataPath : pluginDataPathList) {
-                    File targetPath = new File(this.pack.packDir, pluginDataPath.path());
-                    if (!targetPath.exists()) continue;
+                    File srcFile = new File(this.pack.packDir, pluginDataPath.path());
+                    if (!srcFile.exists()) continue;
 
-                    File linkPath = new File(pluginsDir, pluginDataPath.path());
+                    File destFile = new File(pluginsDir, pluginDataPath.path());
 
-                    if (linkPath.exists()) {
-                        if (FileUtils.isSymlink(linkPath)) {
+                    if (destFile.exists()) {
+                        if (FileUtils.isSymlink(destFile)) {
                             continue;
                         } else {
                             // Delete non-symlinks
-                            FileUtils.deleteRecursion(linkPath);
+                            FileUtils.deleteRecursion(destFile);
                         }
                     }
 
-                    linkPath.getParentFile().mkdirs();
+                    destFile.getParentFile().mkdirs();
 
                     // Create symlink
                     if (pluginDataPath.isDirectory() && System.getProperty("os.name").startsWith("Windows")) {
                         // Windows has its own way of directory symlinks
-                        WindowsSymlinkUtils.createJunctionSymlink(linkPath, targetPath);
+                        WindowsSymlinkUtils.createJunctionSymlink(destFile, srcFile);
                     } else {
-                        Files.createSymbolicLink(linkPath.getAbsoluteFile().toPath(), targetPath.getAbsoluteFile().toPath());
+                        Files.createSymbolicLink(destFile.getAbsoluteFile().toPath(), srcFile.getAbsoluteFile().toPath());
                     }
                 }
             }
@@ -217,20 +217,23 @@ public class SyncPackOperation {
             // Check if plugin config exists
             if (isPluginInUse(pluginName)) {
                 for (PluginDataPath pluginDataPath : pluginDataPathList) {
-                    File file = new File(ItemsAdderContentsSync.instance().getDataFolder().getParentFile(), pluginDataPath.path());
+                    File srcFile = new File(this.pack.packDir, pluginDataPath.path());
+                    if (!srcFile.exists()) continue;
 
-                    if (!file.exists()) continue;
+                    File destFile = new File(ItemsAdderContentsSync.instance().getDataFolder().getParentFile(), pluginDataPath.path());
 
-                    ItemsAdderContentsSync.instance().getLogger().info("Deleting file: " + pluginDataPath.path());
+                    if (destFile.exists()) {
+                        ItemsAdderContentsSync.instance().getLogger().info("Deleting file: " + pluginDataPath.path());
 
-                    FileUtils.deleteRecursion(file);
+                        FileUtils.deleteRecursion(destFile);
+                    }
+
+                    // Copy new file
+                    ItemsAdderContentsSync.instance().getLogger().info("Copying new files: " + pluginDataPath.path());
+                    FileUtils.copyFileStructure(srcFile, destFile);
                 }
             }
         }
-
-        // Copy new files
-        ItemsAdderContentsSync.instance().getLogger().info("Copying new files");
-        FileUtils.copyFileStructure(this.pack.packDir, ItemsAdderContentsSync.instance().getDataFolder().getParentFile());
     }
 
     public boolean isPluginInUse(String pluginName) {

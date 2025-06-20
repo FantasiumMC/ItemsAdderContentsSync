@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'com.epicplayera10'
-version = '1.0.13'
+version = '1.0.14'
 
 repositories {
     mavenCentral()
@@ -22,12 +22,15 @@ repositories {
 
     // Lumine
     maven { url "https://mvn.lumine.io/repository/maven-public/" }
+
+    // ItemsAdder
+    maven { url "https://maven.devs.beer/" }
 }
 
 dependencies {
     compileOnly "io.papermc.paper:paper-api:1.20.2-R0.1-SNAPSHOT"
 
-    compileOnly 'com.github.LoneDev6:API-ItemsAdder:3.6.2-beta-r3-b'
+    compileOnly 'dev.lone:api-itemsadder:4.0.10'
     compileOnly "com.ticxo.modelengine:ModelEngine:R4.0.4"
     //compileOnly "com.ticxo.modelengine:api:R3.1.9"
 
@@ -37,7 +40,7 @@ dependencies {
     implementation 'eu.okaeri:okaeri-configs-serdes-commons:5.0.0-beta.5'
     implementation 'eu.okaeri:okaeri-configs-serdes-bukkit:5.0.0-beta.5'
 
-    implementation 'org.eclipse.jgit:org.eclipse.jgit:6.8.0.202311291450-r'
+    implementation("org.eclipse.jgit:org.eclipse.jgit:7.3.0.202506031305-r")
 
     implementation "co.aikar:acf-paper:0.5.1-SNAPSHOT"
 }
