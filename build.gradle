@@ -24,7 +24,10 @@ repositories {
     maven { url "https://mvn.lumine.io/repository/maven-public/" }
 
     // ItemsAdder
-    maven { url "https://maven.devs.beer/" }
+    maven {
+        name = "matteodev"
+        url = "https://maven.devs.beer/"
+    }
 }
 
 dependencies {
