@@ -25,7 +25,7 @@ jobs:
         run: chmod +x gradlew
         
       - name: Setup gradle cache
-        uses: burrunan/gradle-cache-action@v1
+        uses: burrunan/gradle-cache-action@v2
         with:
           save-generated-gradle-jars: false
           save-local-build-cache: false
